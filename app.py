@@ -18,7 +18,7 @@ POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "30"))
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", "8000"))
 DOCKER_SOCKET = os.environ.get("DOCKER_SOCKET", "/var/run/docker.sock")
-ICON_URL = "https://raw.githubusercontent.com/Merpzz/docker-traffic-monitor/main/icon.svg"
+ICON_URL = "https://raw.githubusercontent.com/Merpzz/docker-traffic-monitor/main/icon.png"
 
 
 def get_sqlite_connection():
