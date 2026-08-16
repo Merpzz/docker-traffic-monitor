@@ -1,0 +1,15 @@
+services:
+  docker-traffic-monitor:
+    build: .
+    container_name: docker-traffic-monitor
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "8000"
+      POLL_INTERVAL: "30"
+      DATA_DIR: "/data"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./data:/data
