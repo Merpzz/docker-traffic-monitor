@@ -18,6 +18,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Decode real PNG icon
+        run: base64 --decode icon64.b64 > icon.png
+
+      - name: Verify PNG icon
+        run: file icon.png
+
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
