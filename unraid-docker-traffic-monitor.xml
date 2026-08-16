@@ -1,0 +1,23 @@
+<Container version="2">
+  <Name>traffic-monitor</Name>
+  <Repository>ghcr.io/merpzz/docker-traffic-monitor:latest</Repository>
+  <Registry>https://github.com/merpzz/docker-traffic-monitor/pkgs/container/docker-traffic-monitor</Registry>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/merpzz/docker-traffic-monitor</Support>
+  <Project>https://github.com/merpzz/docker-traffic-monitor</Project>
+  <Overview>Lightweight Docker traffic monitor. Reads Docker network counters, stores traffic deltas in SQLite, and displays persistent per-container download and upload totals.</Overview>
+  <Category>Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8305]/</WebUI>
+  <Icon>https://raw.githubusercontent.com/Merpzz/docker-traffic-monitor/main/icon.svg</Icon>
+  <Config Name="WebUI Port" Target="8000" Default="8305" Mode="tcp" Description="Web interface port." Type="Port" Display="always" Required="true" Mask="false">8305</Config>
+  <Config Name="AppData" Target="/config" Default="/mnt/user/appdata/traffic-monitor" Mode="rw" Description="Persistent application files and configuration." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/traffic-monitor</Config>
+  <Config Name="Traffic Data" Target="/data/traffic-manager" Default="/mnt/user/data/traffic-manager" Mode="rw" Description="Persistent storage for collected traffic statistics and the SQLite database." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/data/traffic-manager</Config>
+  <Config Name="Docker Socket" Target="/var/run/docker.sock" Default="/var/run/docker.sock" Mode="ro" Description="Docker socket used to read container network statistics." Type="Path" Display="always" Required="true" Mask="false">/var/run/docker.sock</Config>
+  <Config Name="POLL_INTERVAL" Target="POLL_INTERVAL" Default="30" Mode="" Description="Docker traffic polling interval in seconds." Type="Variable" Display="always" Required="true" Mask="false">30</Config>
+  <Config Name="HOST" Target="HOST" Default="0.0.0.0" Mode="" Description="Web server bind address." Type="Variable" Display="advanced-hide" Required="true" Mask="false">0.0.0.0</Config>
+  <Config Name="PORT" Target="PORT" Default="8000" Mode="" Description="Internal web server port." Type="Variable" Display="advanced-hide" Required="true" Mask="false">8000</Config>
+  <Config Name="DATA_DIR" Target="DATA_DIR" Default="/data/traffic-manager" Mode="" Description="Directory containing the traffic database." Type="Variable" Display="advanced-hide" Required="true" Mask="false">/data/traffic-manager</Config>
+  <Config Name="DOCKER_SOCKET" Target="DOCKER_SOCKET" Default="/var/run/docker.sock" Mode="" Description="Docker socket path inside the container." Type="Variable" Display="advanced-hide" Required="true" Mask="false">/var/run/docker.sock</Config>
+</Container>
