@@ -73,41 +73,32 @@ def calculate_network_delta(previous, current):
 
 
 def decode_chunked_body(body):
-    """Decode an HTTP/1.1 chunked response body."""
     decoded = bytearray()
     pos = 0
-
     while True:
         line_end = body.find(b"\r\n", pos)
         if line_end == -1:
             raise RuntimeError("Malformed chunked Docker API response")
-
         size_line = body[pos:line_end].split(b";", 1)[0].strip()
         try:
             chunk_size = int(size_line, 16)
         except ValueError as exc:
             raise RuntimeError("Invalid chunk size from Docker API") from exc
-
         pos = line_end + 2
         if chunk_size == 0:
             break
-
         chunk_end = pos + chunk_size
         if chunk_end > len(body):
             raise RuntimeError("Incomplete chunked Docker API response")
-
         decoded.extend(body[pos:chunk_end])
         pos = chunk_end
-
         if body[pos:pos + 2] != b"\r\n":
             raise RuntimeError("Malformed chunk terminator from Docker API")
         pos += 2
-
     return bytes(decoded)
 
 
 def http_get_json(path):
-    """Send an HTTP GET request to the Docker Unix socket and return JSON."""
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
         sock.settimeout(5)
         sock.connect(DOCKER_SOCKET)
@@ -117,7 +108,6 @@ def http_get_json(path):
             "Connection: close\r\n\r\n"
         )
         sock.sendall(request.encode("utf-8"))
-
         chunks = []
         while True:
             data = sock.recv(65536)
@@ -128,7 +118,6 @@ def http_get_json(path):
     payload = b"".join(chunks)
     if not payload:
         return None
-
     if b"\r\n\r\n" not in payload:
         raise RuntimeError("Malformed HTTP response from Docker API")
 
@@ -137,7 +126,6 @@ def http_get_json(path):
     header_lines = header_text.splitlines()
     status_line = header_lines[0]
     status_code = int(status_line.split()[1])
-
     if status_code != 200:
         raise RuntimeError(f"Docker API returned status {status_code}: {status_line}")
 
@@ -149,10 +137,8 @@ def http_get_json(path):
 
     if "chunked" in headers.get("transfer-encoding", ""):
         body = decode_chunked_body(body)
-
     if not body:
         return None
-
     return json.loads(body.decode("utf-8"))
 
 
@@ -174,21 +160,17 @@ def read_current_snapshot():
         container_id = container.get("Id")
         if not container_id:
             continue
-
         container_name = normalize_container_name(container.get("Names", ["unknown"]))
         stats = http_get_json(f"/v1.41/containers/{container_id}/stats?stream=0")
         if not stats:
             continue
-
         networks = stats.get("networks") or {}
         rx_bytes = 0
         tx_bytes = 0
         for iface in networks.values():
             rx_bytes += int(iface.get("rx_bytes", 0) or 0)
             tx_bytes += int(iface.get("tx_bytes", 0) or 0)
-
         snapshot[container_name] = {"rx_bytes": rx_bytes, "tx_bytes": tx_bytes}
-
     return snapshot
 
 
@@ -203,7 +185,6 @@ def load_last_snapshot(conn):
 def save_snapshot(conn, snapshot):
     timestamp = datetime.now(timezone.utc).isoformat()
     current_names = set(snapshot)
-
     if current_names:
         placeholders = ",".join("?" for _ in current_names)
         conn.execute(
@@ -248,22 +229,17 @@ def collect_once():
     try:
         previous_snapshot = load_last_snapshot(conn)
         current_snapshot = read_current_snapshot()
-
         for name, current_values in current_snapshot.items():
             previous_values = previous_snapshot.get(name)
             if previous_values is None:
                 continue
-
             current_rx = int(current_values.get("rx_bytes", 0) or 0)
             current_tx = int(current_values.get("tx_bytes", 0) or 0)
             previous_rx = int(previous_values.get("rx_bytes", 0) or 0)
             previous_tx = int(previous_values.get("tx_bytes", 0) or 0)
-
             download_delta = current_rx - previous_rx if current_rx >= previous_rx else current_rx
             upload_delta = current_tx - previous_tx if current_tx >= previous_tx else current_tx
-
             record_usage(conn, name, download_delta, upload_delta)
-
         save_snapshot(conn, current_snapshot)
         conn.commit()
     finally:
@@ -323,6 +299,23 @@ def fetch_period_rows(since):
         conn.close()
 
 
+def build_homepage_payload():
+    """Return today's top three containers in a Homepage-friendly flat object."""
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    rows = fetch_period_rows(today_start)[:3]
+    payload = {}
+    for index in range(3):
+        key = f"top{index + 1}"
+        if index < len(rows):
+            row = rows[index]
+            total = int(row["total_download"] or 0) + int(row["total_upload"] or 0)
+            payload[key] = f"{row['name']} · {format_bytes(total)}"
+        else:
+            payload[key] = "—"
+    return payload
+
+
 def build_page():
     now = datetime.now(timezone.utc)
     period_rows = {
@@ -339,18 +332,10 @@ def build_page():
         if not rows:
             html_rows.append("<p>No traffic recorded yet.</p>")
             continue
-
         html_rows.append(
             """
             <table>
-              <thead>
-                <tr>
-                  <th>Container</th>
-                  <th>Download</th>
-                  <th>Upload</th>
-                  <th>Total</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Container</th><th>Download</th><th>Upload</th><th>Total</th></tr></thead>
               <tbody>
             """
         )
@@ -369,7 +354,6 @@ def build_page():
         html_rows.append("</tbody></table>")
 
     rows_html = "\n".join(html_rows)
-
     return f"""
     <!DOCTYPE html>
     <html lang="en">
@@ -398,6 +382,14 @@ def build_page():
 
 
 class TrafficHandler(BaseHTTPRequestHandler):
+    def send_json(self, payload):
+        body = json.dumps(payload).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self):
         parsed = urlparse(self.path)
         if parsed.path == "/":
@@ -411,21 +403,17 @@ class TrafficHandler(BaseHTTPRequestHandler):
 
         if parsed.path == "/api/traffic":
             now = datetime.now(timezone.utc)
-            payload = {
+            self.send_json({
                 "today": fetch_period_rows(
                     now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
                 ),
-                "last_30_days": fetch_period_rows(
-                    (now - timedelta(days=30)).isoformat()
-                ),
+                "last_30_days": fetch_period_rows((now - timedelta(days=30)).isoformat()),
                 "all_time": fetch_period_rows(None),
-            }
-            body = json.dumps(payload).encode("utf-8")
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
+            })
+            return
+
+        if parsed.path == "/api/homepage":
+            self.send_json(build_homepage_payload())
             return
 
         self.send_response(404)
