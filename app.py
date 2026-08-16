@@ -249,9 +249,6 @@ def collect_once():
         previous_snapshot = load_last_snapshot(conn)
         current_snapshot = read_current_snapshot()
 
-        # A container that is not in the previous snapshot is new (or the first
-        # observation after installation). Use its current counters as the
-        # baseline instead of counting traffic that happened before monitoring.
         for name, current_values in current_snapshot.items():
             previous_values = previous_snapshot.get(name)
             if previous_values is None:
@@ -262,8 +259,6 @@ def collect_once():
             previous_rx = int(previous_values.get("rx_bytes", 0) or 0)
             previous_tx = int(previous_values.get("tx_bytes", 0) or 0)
 
-            # Docker counters reset when a container is recreated. In that case,
-            # start from the fresh counter instead of dropping the new traffic.
             download_delta = current_rx - previous_rx if current_rx >= previous_rx else current_rx
             upload_delta = current_tx - previous_tx if current_tx >= previous_tx else current_tx
 
@@ -375,7 +370,6 @@ def build_page():
 
     rows_html = "\n".join(html_rows)
 
-    # Do not use str.format() for this template: CSS also uses curly braces.
     return f"""
     <!DOCTYPE html>
     <html lang="en">
@@ -384,13 +378,14 @@ def build_page():
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Docker Traffic Monitor</title>
         <style>
-            body {{ font-family: Arial, sans-serif; background: #111827; color: #e5e7eb; margin: 0; padding: 2rem; }}
-            h1, h2 {{ color: #f9fafb; }}
-            table {{ border-collapse: collapse; width: min(980px, 100%); margin-bottom: 2rem; }}
-            th, td {{ border: 1px solid #374151; padding: 0.7rem 0.9rem; text-align: left; }}
+            body {{ font-family: Arial, sans-serif; background: #111827; color: #e5e7eb; margin: 0; padding: 1.5rem; font-size: 13px; }}
+            h1 {{ color: #f9fafb; font-size: 26px; margin: 0 0 0.75rem; }}
+            h2 {{ color: #f9fafb; font-size: 20px; margin: 1.15rem 0 0.7rem; }}
+            table {{ border-collapse: collapse; width: min(980px, 100%); margin-bottom: 1.4rem; }}
+            th, td {{ border: 1px solid #374151; padding: 0.5rem 0.7rem; text-align: left; }}
             th {{ background: #1f2937; }}
             tr:nth-child(even) {{ background: rgba(255,255,255,0.02); }}
-            p {{ color: #d1d5db; }}
+            p {{ color: #d1d5db; margin: 0.5rem 0 1rem; }}
         </style>
     </head>
     <body>
