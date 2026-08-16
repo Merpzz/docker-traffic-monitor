@@ -18,6 +18,7 @@ POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "30"))
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", "8000"))
 DOCKER_SOCKET = os.environ.get("DOCKER_SOCKET", "/var/run/docker.sock")
+ICON_URL = "https://raw.githubusercontent.com/Merpzz/docker-traffic-monitor/main/icon.svg"
 
 
 def get_sqlite_connection():
@@ -300,7 +301,6 @@ def fetch_period_rows(since):
 
 
 def build_homepage_payload():
-    """Return today's top three containers in a Homepage-friendly flat object."""
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
     rows = fetch_period_rows(today_start)[:3]
@@ -361,20 +361,34 @@ def build_page():
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Docker Traffic Monitor</title>
+        <link rel="icon" href="{ICON_URL}">
         <style>
             body {{ font-family: Arial, sans-serif; background: #111827; color: #e5e7eb; margin: 0; padding: 1.5rem; font-size: 13px; }}
-            h1 {{ color: #f9fafb; font-size: 26px; margin: 0 0 0.75rem; }}
+            .header {{ display: flex; align-items: center; gap: 0.9rem; margin-bottom: 0.35rem; }}
+            .logo {{ width: 58px; height: 58px; border-radius: 12px; box-shadow: 0 0 18px rgba(220, 38, 38, 0.22); flex: 0 0 auto; }}
+            .titleblock {{ min-width: 0; }}
+            h1 {{ color: #f9fafb; font-size: 26px; margin: 0 0 0.25rem; }}
+            .subtitle {{ color: #d1d5db; margin: 0; }}
             h2 {{ color: #f9fafb; font-size: 20px; margin: 1.15rem 0 0.7rem; }}
             table {{ border-collapse: collapse; width: min(980px, 100%); margin-bottom: 1.4rem; }}
             th, td {{ border: 1px solid #374151; padding: 0.5rem 0.7rem; text-align: left; }}
             th {{ background: #1f2937; }}
             tr:nth-child(even) {{ background: rgba(255,255,255,0.02); }}
             p {{ color: #d1d5db; margin: 0.5rem 0 1rem; }}
+            @media (max-width: 600px) {{
+                .logo {{ width: 48px; height: 48px; }}
+                h1 {{ font-size: 22px; }}
+            }}
         </style>
     </head>
     <body>
-        <h1>Docker Traffic Monitor</h1>
-        <p>Tracks Docker container network traffic and stores the deltas in SQLite so totals survive restarts.</p>
+        <div class="header">
+            <img class="logo" src="{ICON_URL}" alt="TM logo">
+            <div class="titleblock">
+                <h1>Docker Traffic Monitor</h1>
+                <p class="subtitle">Tracks Docker container network traffic and stores the deltas in SQLite so totals survive restarts.</p>
+            </div>
+        </div>
         {rows_html}
     </body>
     </html>
