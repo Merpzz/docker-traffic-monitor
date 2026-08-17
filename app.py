@@ -21,6 +21,11 @@ DOCKER_SOCKET = os.environ.get("DOCKER_SOCKET", "/var/run/docker.sock")
 ICON_URL = "https://raw.githubusercontent.com/Merpzz/docker-traffic-monitor/main/icon.png"
 
 HOMEPAGE_PERIODS = ("today", "30d", "alltime")
+HOMEPAGE_PERIOD_LABELS = {
+    "today": "Today",
+    "30d": "Last 30 days",
+    "alltime": "All time",
+}
 DEFAULT_HOMEPAGE_PERIOD = "alltime"
 
 
@@ -321,9 +326,9 @@ def homepage_period_since(period, now=None):
 
 
 def build_homepage_payload(period=DEFAULT_HOMEPAGE_PERIOD):
-    _, since = homepage_period_since(period)
+    normalized_period, since = homepage_period_since(period)
     rows = fetch_period_rows(since)[:3]
-    payload = {}
+    payload = {"period": HOMEPAGE_PERIOD_LABELS[normalized_period]}
     for index in range(3):
         key = f"top{index + 1}"
         if index < len(rows):
