@@ -10,7 +10,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from html import escape
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 DB_PATH = os.path.join(DATA_DIR, "traffic.db")
@@ -19,6 +19,9 @@ HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", "8000"))
 DOCKER_SOCKET = os.environ.get("DOCKER_SOCKET", "/var/run/docker.sock")
 ICON_URL = "https://raw.githubusercontent.com/Merpzz/docker-traffic-monitor/main/icon.png"
+
+HOMEPAGE_PERIODS = ("today", "30d", "alltime")
+DEFAULT_HOMEPAGE_PERIOD = "alltime"
 
 
 def get_sqlite_connection():
@@ -300,10 +303,26 @@ def fetch_period_rows(since):
         conn.close()
 
 
-def build_homepage_payload():
-    now = datetime.now(timezone.utc)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-    rows = fetch_period_rows(today_start)[:3]
+def homepage_period_since(period, now=None):
+    """Return (canonical_period, since_timestamp) for Homepage traffic totals."""
+    now = now or datetime.now(timezone.utc)
+    normalized = (period or DEFAULT_HOMEPAGE_PERIOD).strip().lower()
+    if normalized not in HOMEPAGE_PERIODS:
+        normalized = DEFAULT_HOMEPAGE_PERIOD
+
+    if normalized == "today":
+        since = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    elif normalized == "30d":
+        since = (now - timedelta(days=30)).isoformat()
+    else:
+        since = None
+
+    return normalized, since
+
+
+def build_homepage_payload(period=DEFAULT_HOMEPAGE_PERIOD):
+    _, since = homepage_period_since(period)
+    rows = fetch_period_rows(since)[:3]
     payload = {}
     for index in range(3):
         key = f"top{index + 1}"
@@ -427,7 +446,9 @@ class TrafficHandler(BaseHTTPRequestHandler):
             return
 
         if parsed.path == "/api/homepage":
-            self.send_json(build_homepage_payload())
+            query = parse_qs(parsed.query)
+            period = query.get("period", [DEFAULT_HOMEPAGE_PERIOD])[0]
+            self.send_json(build_homepage_payload(period))
             return
 
         self.send_response(404)
