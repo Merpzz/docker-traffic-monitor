@@ -25,6 +25,7 @@ This is intentionally not a full observability stack. It is built for the simple
 - Homepage-specific JSON endpoint with a configurable period
 - Homepage period choices: `today`, `30d`, or `alltime`
 - `alltime` is the default Homepage period
+- Homepage API returns a human-readable period label so the widget can always show which period it represents
 - Small standalone container with no agent required inside monitored containers
 
 ## How it works
@@ -139,15 +140,15 @@ GET /api/homepage?period=30d
 GET /api/homepage?period=alltime
 ```
 
-The Homepage endpoint returns the three containers with the highest total traffic for the selected period, formatted for a compact Homepage card.
+The Homepage endpoint returns the selected period plus the three containers with the highest total traffic for that period, formatted for a compact Homepage card.
 
 Supported period values are:
 
-| Value | Period |
-|-------|--------|
-| `today` | Since 00:00 UTC today |
-| `30d` | Rolling last 30 days |
-| `alltime` | All traffic stored in the database |
+| Value | API label | Period |
+|-------|-----------|--------|
+| `today` | `Today` | Since 00:00 UTC today |
+| `30d` | `Last 30 days` | Rolling last 30 days |
+| `alltime` | `All time` | All traffic stored in the database |
 
 If `period` is omitted, or an unsupported value is supplied, the endpoint uses `alltime`.
 
@@ -155,31 +156,39 @@ Example response:
 
 ```json
 {
+  "period": "All time",
   "top1": "qbittorrentvpn · 14.04 TB",
   "top2": "Jellyfin · 1.79 TB",
   "top3": "Nextcloud · 145.00 GB"
 }
 ```
 
+Because the `period` value is generated from the same query parameter that controls the data selection, the displayed period cannot silently drift out of sync with the traffic totals.
+
 ## Homepage integration
 
-Docker Traffic Monitor can be used with Homepage's `customapi` widget. Select the desired period in the widget URL.
+Docker Traffic Monitor can be used with Homepage's `customapi` widget. Select the desired period in the widget URL and map the returned `period` field as the first row.
+
+A neutral service description such as `Docker-trafik per container` is recommended, while the widget itself shows the currently selected period dynamically.
 
 ### All time (recommended/default)
 
 ```yaml
 - Docker Traffic Monitor:
+    description: Docker-trafik per container
     href: http://<traffic-monitor>:8000
     widget:
       type: customapi
       url: http://<traffic-monitor>:8000/api/homepage?period=alltime
       mappings:
+        - field: period
+          label: Period
         - field: top1
-          label: "#1"
+          label: Top 1
         - field: top2
-          label: "#2"
+          label: Top 2
         - field: top3
-          label: "#3"
+          label: Top 3
 ```
 
 To change what the Homepage card displays, only change the `period` value:
@@ -194,6 +203,8 @@ url: http://<traffic-monitor>:8000/api/homepage?period=30d
 # All time
 url: http://<traffic-monitor>:8000/api/homepage?period=alltime
 ```
+
+The `Period` row updates automatically to `Today`, `Last 30 days`, or `All time` to match the selected dataset.
 
 The Homepage card is intended as the compact overview. Clicking the service card can open the full Docker Traffic Monitor dashboard, where Today, Last 30 days, and All time remain visible together.
 
