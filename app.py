@@ -351,15 +351,20 @@ def build_page():
     }
 
     html_rows = []
-    for label, rows in period_rows.items():
+    for table_index, (label, rows) in enumerate(period_rows.items()):
         html_rows.append(f"<h2>{escape(label)}</h2>")
         if not rows:
             html_rows.append("<p>No traffic recorded yet.</p>")
             continue
         html_rows.append(
-            """
-            <table>
-              <thead><tr><th>Container</th><th>Download</th><th>Upload</th><th>Total</th></tr></thead>
+            f"""
+            <table class="sortable-table" id="traffic-table-{table_index}">
+              <thead><tr>
+                <th data-column="0" data-type="text" tabindex="0">Container <span class="sort-arrow">↕</span></th>
+                <th data-column="1" data-type="number" tabindex="0">Download <span class="sort-arrow">↕</span></th>
+                <th data-column="2" data-type="number" tabindex="0">Upload <span class="sort-arrow">↕</span></th>
+                <th data-column="3" data-type="number" tabindex="0">Total <span class="sort-arrow">↕</span></th>
+              </tr></thead>
               <tbody>
             """
         )
@@ -367,12 +372,13 @@ def build_page():
             download = int(row["total_download"] or 0)
             upload = int(row["total_upload"] or 0)
             total = download + upload
+            name = escape(str(row["name"]))
             html_rows.append(
                 "<tr>"
-                f"<td>{escape(str(row['name']))}</td>"
-                f"<td>{format_bytes(download)}</td>"
-                f"<td>{format_bytes(upload)}</td>"
-                f"<td>{format_bytes(total)}</td>"
+                f"<td data-sort-value=\"{name.lower()}\">{name}</td>"
+                f"<td data-sort-value=\"{download}\">{format_bytes(download)}</td>"
+                f"<td data-sort-value=\"{upload}\">{format_bytes(upload)}</td>"
+                f"<td data-sort-value=\"{total}\">{format_bytes(total)}</td>"
                 "</tr>"
             )
         html_rows.append("</tbody></table>")
@@ -397,6 +403,11 @@ def build_page():
             table {{ border-collapse: collapse; width: min(980px, 100%); margin-bottom: 1.4rem; }}
             th, td {{ border: 1px solid #374151; padding: 0.5rem 0.7rem; text-align: left; }}
             th {{ background: #1f2937; }}
+            th[data-column] {{ cursor: pointer; user-select: none; }}
+            th[data-column]:hover {{ background: #293548; }}
+            th[data-column]:focus {{ outline: 2px solid #6b7280; outline-offset: -2px; }}
+            .sort-arrow {{ display: inline-block; min-width: 1em; margin-left: 0.3rem; color: #9ca3af; }}
+            th.sorted .sort-arrow {{ color: #f9fafb; }}
             tr:nth-child(even) {{ background: rgba(255,255,255,0.02); }}
             p {{ color: #d1d5db; margin: 0.5rem 0 1rem; }}
             @media (max-width: 600px) {{
@@ -414,6 +425,52 @@ def build_page():
             </div>
         </div>
         {rows_html}
+        <script>
+            (() => {{
+                function sortTable(header) {{
+                    const table = header.closest("table");
+                    const tbody = table.querySelector("tbody");
+                    const column = Number(header.dataset.column);
+                    const type = header.dataset.type;
+                    const currentDirection = header.dataset.direction;
+                    const direction = currentDirection === "desc" ? "asc" : "desc";
+                    const rows = Array.from(tbody.querySelectorAll("tr"));
+
+                    table.querySelectorAll("th[data-column]").forEach((th) => {{
+                        th.classList.remove("sorted");
+                        th.removeAttribute("data-direction");
+                        th.querySelector(".sort-arrow").textContent = "↕";
+                    }});
+
+                    rows.sort((a, b) => {{
+                        const aValue = a.children[column].dataset.sortValue || "";
+                        const bValue = b.children[column].dataset.sortValue || "";
+                        let comparison;
+                        if (type === "number") {{
+                            comparison = Number(aValue) - Number(bValue);
+                        }} else {{
+                            comparison = aValue.localeCompare(bValue, undefined, {{ sensitivity: "base" }});
+                        }}
+                        return direction === "asc" ? comparison : -comparison;
+                    }});
+
+                    rows.forEach((row) => tbody.appendChild(row));
+                    header.dataset.direction = direction;
+                    header.classList.add("sorted");
+                    header.querySelector(".sort-arrow").textContent = direction === "asc" ? "↑" : "↓";
+                }}
+
+                document.querySelectorAll("th[data-column]").forEach((header) => {{
+                    header.addEventListener("click", () => sortTable(header));
+                    header.addEventListener("keydown", (event) => {{
+                        if (event.key === "Enter" || event.key === " ") {{
+                            event.preventDefault();
+                            sortTable(header);
+                        }}
+                    }});
+                }});
+            }})();
+        </script>
     </body>
     </html>
     """
