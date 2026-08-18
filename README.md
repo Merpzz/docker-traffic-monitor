@@ -21,6 +21,7 @@ This is intentionally not a full observability stack. It is built for the simple
 - Stores measured deltas in SQLite instead of relying on Docker's current counters
 - Handles Docker counter resets without subtracting traffic from historical totals
 - Browser dashboard with Today, Last 30 days, and All time tables
+- Sortable dashboard columns for Container, Download, Upload, and Total
 - JSON API containing all three periods
 - Homepage-specific JSON endpoint with a configurable period
 - Homepage period choices: `today`, `30d`, or `alltime`
@@ -109,7 +110,20 @@ Each table contains:
 | Jellyfin | 312 GB | 1.48 TB | 1.79 TB |
 | Nextcloud | 84 GB | 61 GB | 145 GB |
 
-Rows are ordered by total traffic, highest first.
+Rows initially appear ordered by total traffic, highest first.
+
+### Sorting tables
+
+Each table can be sorted independently by clicking a column heading:
+
+- **Container** - alphabetical sorting
+- **Download** - downloaded traffic
+- **Upload** - uploaded traffic
+- **Total** - combined traffic
+
+Click the same heading again to toggle between ascending and descending order. The active column shows an up/down arrow for the current direction.
+
+Sorting is performed entirely in the browser. It does not modify the SQLite database, collection order, API output, or stored traffic values. Raw byte counts are embedded in the table cells for sorting, so values displayed with different units such as KB, MB, GB, and TB are still compared numerically correctly.
 
 ## API
 
